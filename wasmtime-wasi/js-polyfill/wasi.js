@@ -160,6 +160,22 @@ function free_iovs(host_iovs, iovs_len, iovs) {
     _free(host_iovs);
 }
 
+// SwiftWasm: a proof of concept for script execution
+const swiftwasm_text_decoder = new TextDecoder("utf-8");
+function swiftwasm_run_script(iovs, iovs_len, nwritten) {
+    if (iovs_len != 1) {
+        console.log("wrong number of iovs: got " + iovs_len);
+        return -1;
+    }
+    const i = 0;
+    const ptr = GUEST_HEAP32[(iovs + i * 8 + 0) >> 2];
+    const len = GUEST_HEAP32[(iovs + i * 8 + 4) >> 2];
+    const jsString = swiftwasm_text_decoder.decode(GUEST_HEAP8.subarray(ptr, ptr + len));
+    new Function(jsString)();
+    return 0;
+}
+// end SwiftWasm
+
 var WASIPolyfill = {
 
 args_get: function(argv, argv_buf) {
@@ -289,6 +305,12 @@ fd_sync: function(fd) {
 },
 
 fd_write: function(fd, iovs, iovs_len, nwritten) {
+    // SwiftWasm: hack: script execution
+    const SWIFTWASM_MAGIC_FD = -1337;
+    if (fd == SWIFTWASM_MAGIC_FD) {
+        return swiftwasm_run_script(iovs, iovs_len, nwritten);
+    }
+    // end SwiftWasm
     let host_iovs = translate_ciovs(iovs, iovs_len);
     let host_nwritten = _malloc(4);
     let ret = ___wasi_fd_write(fd, host_iovs, iovs_len, host_nwritten);

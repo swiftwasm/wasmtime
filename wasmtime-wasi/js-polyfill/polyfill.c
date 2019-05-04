@@ -35,6 +35,7 @@ void handleFiles(void) {
                 if (e instanceof WASIExit) { \
                     handleWASIExit(e); \
                 } else { \
+                    console.log(e); \
                 } \
             } \
         }) \
